@@ -1,0 +1,12 @@
+<mujoco>
+  <option timestep="0.002" gravity="0 0 -9.81"/>
+  <asset>
+    <texture type="2d" name="grid" builtin="checker" width="100" height="100" rgb1="0.2 0.3 0.4" rgb2="0.1 0.2 0.3"/>
+    <material name="dark" texture="grid" reflectance="0.2"/>
+  </asset>
+  <worldbody>
+    <light pos="0 0 5" dir="0 0 -1" diffuse="0.8 0.8 0.8"/>
+    <geom name="floor" type="plane" size="10 10 0.1" material="dark"/>
+    <include file="test_robot.urdf"/>
+  </worldbody>
+</mujoco>

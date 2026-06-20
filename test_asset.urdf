@@ -1,0 +1,9 @@
+<robot name="g1">
+  <mujoco>
+    <asset>
+      <texture type="2d" name="tex" builtin="checker" width="100" height="100"/>
+      <material name="mat" texture="tex"/>
+    </asset>
+  </mujoco>
+  <link name="world"/>
+</robot>
