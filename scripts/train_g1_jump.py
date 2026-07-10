@@ -33,7 +33,8 @@ class G1JumpEnv(gym.Env):
         
         self.render_mode = render_mode
         self.script_dir = os.path.dirname(os.path.abspath(__file__))
-        self.scene_path = os.path.join(self.script_dir, "g1_walk_scene.xml")
+        self.root_dir = os.path.dirname(self.script_dir)
+        self.scene_path = os.path.join(self.root_dir, "scenes", "mujoco", "g1_walk_scene.xml")
         
         # Load model and data
         self.model = mujoco.MjModel.from_xml_path(self.scene_path)

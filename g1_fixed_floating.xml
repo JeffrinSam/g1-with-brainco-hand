@@ -164,56 +164,8 @@
           <joint name="waist_roll_joint" pos="0 0 0" axis="1 0 0" range="-0.52 0.52" actuatorfrcrange="-35 35"/>
           <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="waist_roll_link_rev_1_0"/>
           <body name="torso_link">
-      <camera name="head_camera" pos="0.08 0 0.40" xyaxes="0 -1 0 0 0 1" fovy="58"/>
-      <geom name="lidar_visual" type="cylinder" size="0.0325 0.02" pos="0.0039635 0 0.505" rgba="0.15 0.15 0.15 1" material="dark"/>
-      <site name="lidar_site_0" pos="0.0039635 0 0.525" xyaxes="-0.000000 1.000000 0.000000 -0.000000 -0.000000 1.000000" size="0.002"/>
-      <site name="lidar_site_1" pos="0.0039635 0 0.525" xyaxes="-0.258819 0.965926 0.000000 -0.000000 -0.000000 1.000000" size="0.002"/>
-      <site name="lidar_site_2" pos="0.0039635 0 0.525" xyaxes="-0.500000 0.866025 0.000000 -0.000000 -0.000000 1.000000" size="0.002"/>
-      <site name="lidar_site_3" pos="0.0039635 0 0.525" xyaxes="-0.707107 0.707107 0.000000 -0.000000 -0.000000 1.000000" size="0.002"/>
-      <site name="lidar_site_4" pos="0.0039635 0 0.525" xyaxes="-0.866025 0.500000 0.000000 -0.000000 -0.000000 1.000000" size="0.002"/>
-      <site name="lidar_site_5" pos="0.0039635 0 0.525" xyaxes="-0.965926 0.258819 0.000000 -0.000000 -0.000000 1.000000" size="0.002"/>
-      <site name="lidar_site_6" pos="0.0039635 0 0.525" xyaxes="-1.000000 0.000000 0.000000 -0.000000 -0.000000 1.000000" size="0.002"/>
-      <site name="lidar_site_7" pos="0.0039635 0 0.525" xyaxes="-0.965926 -0.258819 0.000000 0.000000 -0.000000 1.000000" size="0.002"/>
-      <site name="lidar_site_8" pos="0.0039635 0 0.525" xyaxes="-0.866025 -0.500000 0.000000 0.000000 -0.000000 1.000000" size="0.002"/>
-      <site name="lidar_site_9" pos="0.0039635 0 0.525" xyaxes="-0.707107 -0.707107 0.000000 0.000000 -0.000000 1.000000" size="0.002"/>
-      <site name="lidar_site_10" pos="0.0039635 0 0.525" xyaxes="-0.500000 -0.866025 0.000000 0.000000 -0.000000 1.000000" size="0.002"/>
-      <site name="lidar_site_11" pos="0.0039635 0 0.525" xyaxes="-0.258819 -0.965926 0.000000 0.000000 -0.000000 1.000000" size="0.002"/>
-      <site name="lidar_site_12" pos="0.0039635 0 0.525" xyaxes="-0.000000 -1.000000 0.000000 0.000000 -0.000000 1.000000" size="0.002"/>
-      <site name="lidar_site_13" pos="0.0039635 0 0.525" xyaxes="0.258819 -0.965926 0.000000 0.000000 0.000000 1.000000" size="0.002"/>
-      <site name="lidar_site_14" pos="0.0039635 0 0.525" xyaxes="0.500000 -0.866025 0.000000 0.000000 0.000000 1.000000" size="0.002"/>
-      <site name="lidar_site_15" pos="0.0039635 0 0.525" xyaxes="0.707107 -0.707107 0.000000 0.000000 0.000000 1.000000" size="0.002"/>
-      <site name="lidar_site_16" pos="0.0039635 0 0.525" xyaxes="0.866025 -0.500000 0.000000 0.000000 0.000000 1.000000" size="0.002"/>
-      <site name="lidar_site_17" pos="0.0039635 0 0.525" xyaxes="0.965926 -0.258819 0.000000 0.000000 0.000000 1.000000" size="0.002"/>
-      <site name="lidar_site_18" pos="0.0039635 0 0.525" xyaxes="1.000000 -0.000000 0.000000 0.000000 0.000000 1.000000" size="0.002"/>
-      <site name="lidar_site_19" pos="0.0039635 0 0.525" xyaxes="0.965926 0.258819 0.000000 -0.000000 0.000000 1.000000" size="0.002"/>
-      <site name="lidar_site_20" pos="0.0039635 0 0.525" xyaxes="0.866025 0.500000 0.000000 -0.000000 0.000000 1.000000" size="0.002"/>
-      <site name="lidar_site_21" pos="0.0039635 0 0.525" xyaxes="0.707107 0.707107 0.000000 -0.000000 0.000000 1.000000" size="0.002"/>
-      <site name="lidar_site_22" pos="0.0039635 0 0.525" xyaxes="0.500000 0.866025 0.000000 -0.000000 0.000000 1.000000" size="0.002"/>
-      <site name="lidar_site_23" pos="0.0039635 0 0.525" xyaxes="0.258819 0.965926 0.000000 -0.000000 0.000000 1.000000" size="0.002"/>
-      <site name="lidar_site_24" pos="0.0039635 0 0.525" xyaxes="-0.000000 1.000000 0.000000 -0.500000 -0.000000 0.866025" size="0.002"/>
-      <site name="lidar_site_25" pos="0.0039635 0 0.525" xyaxes="-0.500000 0.866025 0.000000 -0.433013 -0.250000 0.866025" size="0.002"/>
-      <site name="lidar_site_26" pos="0.0039635 0 0.525" xyaxes="-0.866025 0.500000 0.000000 -0.250000 -0.433013 0.866025" size="0.002"/>
-      <site name="lidar_site_27" pos="0.0039635 0 0.525" xyaxes="-1.000000 0.000000 0.000000 -0.000000 -0.500000 0.866025" size="0.002"/>
-      <site name="lidar_site_28" pos="0.0039635 0 0.525" xyaxes="-0.866025 -0.500000 0.000000 0.250000 -0.433013 0.866025" size="0.002"/>
-      <site name="lidar_site_29" pos="0.0039635 0 0.525" xyaxes="-0.500000 -0.866025 0.000000 0.433013 -0.250000 0.866025" size="0.002"/>
-      <site name="lidar_site_30" pos="0.0039635 0 0.525" xyaxes="-0.000000 -1.000000 0.000000 0.500000 -0.000000 0.866025" size="0.002"/>
-      <site name="lidar_site_31" pos="0.0039635 0 0.525" xyaxes="0.500000 -0.866025 0.000000 0.433013 0.250000 0.866025" size="0.002"/>
-      <site name="lidar_site_32" pos="0.0039635 0 0.525" xyaxes="0.866025 -0.500000 0.000000 0.250000 0.433013 0.866025" size="0.002"/>
-      <site name="lidar_site_33" pos="0.0039635 0 0.525" xyaxes="1.000000 -0.000000 0.000000 0.000000 0.500000 0.866025" size="0.002"/>
-      <site name="lidar_site_34" pos="0.0039635 0 0.525" xyaxes="0.866025 0.500000 0.000000 -0.250000 0.433013 0.866025" size="0.002"/>
-      <site name="lidar_site_35" pos="0.0039635 0 0.525" xyaxes="0.500000 0.866025 0.000000 -0.433013 0.250000 0.866025" size="0.002"/>
-      <site name="lidar_site_36" pos="0.0039635 0 0.525" xyaxes="-0.000000 1.000000 0.000000 0.500000 0.000000 0.866025" size="0.002"/>
-      <site name="lidar_site_37" pos="0.0039635 0 0.525" xyaxes="-0.500000 0.866025 0.000000 0.433013 0.250000 0.866025" size="0.002"/>
-      <site name="lidar_site_38" pos="0.0039635 0 0.525" xyaxes="-0.866025 0.500000 0.000000 0.250000 0.433013 0.866025" size="0.002"/>
-      <site name="lidar_site_39" pos="0.0039635 0 0.525" xyaxes="-1.000000 0.000000 0.000000 0.000000 0.500000 0.866025" size="0.002"/>
-      <site name="lidar_site_40" pos="0.0039635 0 0.525" xyaxes="-0.866025 -0.500000 0.000000 -0.250000 0.433013 0.866025" size="0.002"/>
-      <site name="lidar_site_41" pos="0.0039635 0 0.525" xyaxes="-0.500000 -0.866025 0.000000 -0.433013 0.250000 0.866025" size="0.002"/>
-      <site name="lidar_site_42" pos="0.0039635 0 0.525" xyaxes="-0.000000 -1.000000 0.000000 -0.500000 0.000000 0.866025" size="0.002"/>
-      <site name="lidar_site_43" pos="0.0039635 0 0.525" xyaxes="0.500000 -0.866025 0.000000 -0.433013 -0.250000 0.866025" size="0.002"/>
-      <site name="lidar_site_44" pos="0.0039635 0 0.525" xyaxes="0.866025 -0.500000 0.000000 -0.250000 -0.433013 0.866025" size="0.002"/>
-      <site name="lidar_site_45" pos="0.0039635 0 0.525" xyaxes="1.000000 -0.000000 0.000000 -0.000000 -0.500000 0.866025" size="0.002"/>
-      <site name="lidar_site_46" pos="0.0039635 0 0.525" xyaxes="0.866025 0.500000 0.000000 0.250000 -0.433013 0.866025" size="0.002"/>
-      <site name="lidar_site_47" pos="0.0039635 0 0.525" xyaxes="0.500000 0.866025 0.000000 0.433013 -0.250000 0.866025" size="0.002"/>
+      <camera name="head_camera" pos="0.08 0 0.40" xyaxes="0 -1 0 0.707 0 0.707" fovy="57"/>
+      <camera name="chest_camera" pos="0.15 0 0.10" xyaxes="0 -1 0 0.5 0 0.866" fovy="70"/>
             <inertial pos="0.0013154 0.000855537 0.184599" quat="0.999895 -0.00548212 0.0132901 0.00194196" mass="7.817" diaginertia="0.121734 0.109736 0.0274043"/>
             <joint name="waist_pitch_joint" pos="0 0 0" axis="0 1 0" range="-0.52 0.52" actuatorfrcrange="-35 35"/>
             <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1" mesh="torso_link_rev_1_0"/>
@@ -511,54 +463,4 @@
       </body>
     </body>
   </worldbody>
-  <sensor>
-    <rangefinder name="lidar_ray_0" site="lidar_site_0"/>
-    <rangefinder name="lidar_ray_1" site="lidar_site_1"/>
-    <rangefinder name="lidar_ray_2" site="lidar_site_2"/>
-    <rangefinder name="lidar_ray_3" site="lidar_site_3"/>
-    <rangefinder name="lidar_ray_4" site="lidar_site_4"/>
-    <rangefinder name="lidar_ray_5" site="lidar_site_5"/>
-    <rangefinder name="lidar_ray_6" site="lidar_site_6"/>
-    <rangefinder name="lidar_ray_7" site="lidar_site_7"/>
-    <rangefinder name="lidar_ray_8" site="lidar_site_8"/>
-    <rangefinder name="lidar_ray_9" site="lidar_site_9"/>
-    <rangefinder name="lidar_ray_10" site="lidar_site_10"/>
-    <rangefinder name="lidar_ray_11" site="lidar_site_11"/>
-    <rangefinder name="lidar_ray_12" site="lidar_site_12"/>
-    <rangefinder name="lidar_ray_13" site="lidar_site_13"/>
-    <rangefinder name="lidar_ray_14" site="lidar_site_14"/>
-    <rangefinder name="lidar_ray_15" site="lidar_site_15"/>
-    <rangefinder name="lidar_ray_16" site="lidar_site_16"/>
-    <rangefinder name="lidar_ray_17" site="lidar_site_17"/>
-    <rangefinder name="lidar_ray_18" site="lidar_site_18"/>
-    <rangefinder name="lidar_ray_19" site="lidar_site_19"/>
-    <rangefinder name="lidar_ray_20" site="lidar_site_20"/>
-    <rangefinder name="lidar_ray_21" site="lidar_site_21"/>
-    <rangefinder name="lidar_ray_22" site="lidar_site_22"/>
-    <rangefinder name="lidar_ray_23" site="lidar_site_23"/>
-    <rangefinder name="lidar_ray_24" site="lidar_site_24"/>
-    <rangefinder name="lidar_ray_25" site="lidar_site_25"/>
-    <rangefinder name="lidar_ray_26" site="lidar_site_26"/>
-    <rangefinder name="lidar_ray_27" site="lidar_site_27"/>
-    <rangefinder name="lidar_ray_28" site="lidar_site_28"/>
-    <rangefinder name="lidar_ray_29" site="lidar_site_29"/>
-    <rangefinder name="lidar_ray_30" site="lidar_site_30"/>
-    <rangefinder name="lidar_ray_31" site="lidar_site_31"/>
-    <rangefinder name="lidar_ray_32" site="lidar_site_32"/>
-    <rangefinder name="lidar_ray_33" site="lidar_site_33"/>
-    <rangefinder name="lidar_ray_34" site="lidar_site_34"/>
-    <rangefinder name="lidar_ray_35" site="lidar_site_35"/>
-    <rangefinder name="lidar_ray_36" site="lidar_site_36"/>
-    <rangefinder name="lidar_ray_37" site="lidar_site_37"/>
-    <rangefinder name="lidar_ray_38" site="lidar_site_38"/>
-    <rangefinder name="lidar_ray_39" site="lidar_site_39"/>
-    <rangefinder name="lidar_ray_40" site="lidar_site_40"/>
-    <rangefinder name="lidar_ray_41" site="lidar_site_41"/>
-    <rangefinder name="lidar_ray_42" site="lidar_site_42"/>
-    <rangefinder name="lidar_ray_43" site="lidar_site_43"/>
-    <rangefinder name="lidar_ray_44" site="lidar_site_44"/>
-    <rangefinder name="lidar_ray_45" site="lidar_site_45"/>
-    <rangefinder name="lidar_ray_46" site="lidar_site_46"/>
-    <rangefinder name="lidar_ray_47" site="lidar_site_47"/>
-  </sensor>
 </mujoco>

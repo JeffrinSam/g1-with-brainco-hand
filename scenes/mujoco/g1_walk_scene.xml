@@ -1,10 +1,11 @@
 <mujoco model="g1_walking_scene">
-  <compiler meshdir="" discardvisual="false" balanceinertia="true"/>
+  <compiler meshdir="../.." discardvisual="false" balanceinertia="true"/>
   <option timestep="0.002" gravity="0 0 -9.81"/>
   
   <visual>
     <quality shadowsize="4096"/>
     <map shadowclip="0.5" shadowscale="1.5"/>
+    <global offwidth="1280" offheight="720"/>
   </visual>
 
   <asset>
@@ -79,5 +80,5 @@
   </worldbody>
 
   <!-- Include the robot MJCF model at the root level -->
-  <include file="g1_fixed_floating.xml"/>
+  <include file="../../g1_fixed_floating.xml"/>
 </mujoco>

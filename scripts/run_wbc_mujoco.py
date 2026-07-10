@@ -43,6 +43,47 @@ def get_gravity_orientation(quat):
     gravity_vec = np.array([0.0, 0.0, -1.0], dtype=np.float32)
     return quat_rotate_inverse(quat, gravity_vec)
 
+def quat_to_yaw(quat):
+    """Extract yaw angle from quaternion."""
+    w, x, y, z = quat
+    return np.arctan2(2*(w*z + x*y), 1 - 2*(y*y + z*z))
+
+def get_loco_cmd(robot_pos, robot_yaw, target_pos, max_speed=0.5):
+    """Compute locomotion command to steer toward target waypoint."""
+    dx = target_pos[0] - robot_pos[0]
+    dy = target_pos[1] - robot_pos[1]
+    dist = np.sqrt(dx**2 + dy**2)
+
+    if dist < 0.6:  # waypoint reached
+        return None, dist
+
+    # Angle to target in world frame
+    target_angle = np.arctan2(dy, dx)
+    angle_error = target_angle - robot_yaw
+
+    # Normalize to [-pi, pi]
+    angle_error = (angle_error + np.pi) % (2*np.pi) - np.pi
+
+    # Combine forward and turn in one command, scaling forward speed by alignment
+    alignment = np.cos(angle_error)  # 1.0 when aligned, -1.0 when facing away
+    forward = np.clip(dist * 0.6, 0.2, 0.5) * np.clip(alignment, 0.0, 1.0)
+    turn = np.clip(angle_error * 0.8, -0.6, 0.6)
+    return np.array([forward, 0.0, turn]), dist
+
+# Waypoints — path through the room avoiding obstacles.
+# Sofa occupies roughly x:[4.0,5.0] y:[-1.35,1.35]; coffee table occupies
+# roughly x:[2.4,3.2] y:[-0.7,0.7]. Waypoints below are offset with real
+# clearance from both boxes since get_loco_cmd steers in straight lines
+# with no obstacle avoidance.
+WAYPOINTS = [
+    np.array([1.5, -1.5]),
+    np.array([3.5, -1.5]),
+    np.array([4.3, -1.9]),   # pass below the sofa's right arm, not into it
+    np.array([3.7, -1.9]),   # clear the sofa's x-range before turning back
+    np.array([1.5, -1.0]),   # return leg passes below the coffee table, not through it
+    np.array([0.0,  0.0]),
+]
+
 def find_joint_info(model, names):
     ids = []
     qpos_adrs = []
@@ -96,9 +137,10 @@ def main():
     args = parser.parse_args()
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    scene_path = os.path.join(script_dir, "g1_walk_scene.xml")
-    stand_onnx_path = os.path.join(script_dir, "stand.onnx")
-    walk_onnx_path = os.path.join(script_dir, "walk.onnx")
+    root_dir = os.path.dirname(script_dir)
+    scene_path = os.path.join(root_dir, "scenes", "mujoco", "g1_walk_scene.xml")
+    stand_onnx_path = os.path.join(root_dir, "model_policy", "stand.onnx")
+    walk_onnx_path = os.path.join(root_dir, "model_policy", "walk.onnx")
 
     print("=== Principal MuJoCo Simulation: G1 Walking Controller ===")
     print(f"Loading compiled scene: {scene_path}")
@@ -248,11 +290,12 @@ def main():
     # Simulation stats & recording setup
     trajectory_log = []
     step_counter = 0
-    sim_duration = 9.0  # 9.0 seconds of virtual time
+    sim_duration = 60.0  # 60.0 seconds of virtual time
     total_steps = int(sim_duration / model.opt.timestep)
 
     # Control commands configuration
     loco_cmd = np.array([0.0, 0.0, 0.0], dtype=np.float32)
+    waypoint_idx = 0
 
     print("\nRunning G1 WBC Simulation...")
     print("-" * 105)
@@ -260,18 +303,25 @@ def main():
     print("-" * 105)
 
     def sim_step():
-        nonlocal step_counter, target_dof_pos, action, loco_cmd
+        nonlocal step_counter, target_dof_pos, action, loco_cmd, waypoint_idx
 
-        # 1. Update commands based on time profile
+        # 1. Steer toward the current waypoint based on pelvis position and yaw
         t = data.time
-        if t < 1.5:
-            loco_cmd[:] = [0.0, 0.0, 0.0]       # Stand still
-        elif t < 4.5:
-            loco_cmd[:] = [args.walk_speed, 0.0, 0.0]       # Walk forward
-        elif t < 6.5:
-            loco_cmd[:] = [0.0, 0.0, 0.3]       # Turn in place
+        robot_pos = data.xpos[pelvis_body_id, :2] if pelvis_body_id != -1 else data.qpos[:2]
+        robot_yaw = quat_to_yaw(data.qpos[3:7])
+
+        if waypoint_idx < len(WAYPOINTS):
+            cmd, dist = get_loco_cmd(robot_pos, robot_yaw, WAYPOINTS[waypoint_idx])
+            if cmd is None:
+                print(f"Reached waypoint {waypoint_idx}: {WAYPOINTS[waypoint_idx]}")
+                waypoint_idx += 1
+            else:
+                loco_cmd[:] = cmd
+
+            if waypoint_idx < len(WAYPOINTS) and step_counter % int(2.0 / model.opt.timestep) == 0:
+                print(f"Pos: {robot_pos} | WP {waypoint_idx}: {WAYPOINTS[waypoint_idx]} | dist: {dist:.2f}")
         else:
-            loco_cmd[:] = [0.0, 0.0, 0.0]       # Stand still
+            loco_cmd[:] = [0.0, 0.0, 0.0]       # All waypoints reached, stand still
 
         # 2. Run WBC Policy inference at decimation rate
         if step_counter % control_decimation == 0:
@@ -329,25 +379,28 @@ def main():
         mujoco.mj_step(model, data)
 
         # 5. Robust Logging Printout (every 0.1s virtual time)
-        if step_counter % int(0.1 / model.opt.timestep) == 0:
-            pel_z = data.xpos[pelvis_body_id, 2] if pelvis_body_id != -1 else 0.0
-            li_z = data.xpos[left_index_tip_id, 2] if left_index_tip_id != -1 else 0.0
-            ri_z = data.xpos[right_index_tip_id, 2] if right_index_tip_id != -1 else 0.0
-            print(f"{data.time:<10.2f} | {pel_z:<15.5f} | {str(list(np.round(loco_cmd, 2))):<25} | {li_z:<15.5f} | {ri_z:<15.5f}")
+        # Only recorded/printed during the scripted sequence -- the idle-standing
+        # phase afterwards can run indefinitely and shouldn't grow these unbounded.
+        if t <= sim_duration:
+            if step_counter % int(0.1 / model.opt.timestep) == 0:
+                pel_z = data.xpos[pelvis_body_id, 2] if pelvis_body_id != -1 else 0.0
+                li_z = data.xpos[left_index_tip_id, 2] if left_index_tip_id != -1 else 0.0
+                ri_z = data.xpos[right_index_tip_id, 2] if right_index_tip_id != -1 else 0.0
+                print(f"{data.time:<10.2f} | {pel_z:<15.5f} | {str(list(np.round(loco_cmd, 2))):<25} | {li_z:<15.5f} | {ri_z:<15.5f}")
 
-        # 6. Record trajectory data
-        pelvis_pos = data.xpos[pelvis_body_id].copy() if pelvis_body_id != -1 else np.zeros(3)
-        pelvis_quat = data.qpos[3:7].copy()
-        li_pos = data.xpos[left_index_tip_id].copy() if left_index_tip_id != -1 else np.zeros(3)
-        ri_pos = data.xpos[right_index_tip_id].copy() if right_index_tip_id != -1 else np.zeros(3)
-        
-        trajectory_log.append({
-            "time": data.time,
-            "pelvis_pos": pelvis_pos,
-            "pelvis_quat": pelvis_quat,
-            "left_index_pos": li_pos,
-            "right_index_pos": ri_pos
-        })
+            # 6. Record trajectory data
+            pelvis_pos = data.xpos[pelvis_body_id].copy() if pelvis_body_id != -1 else np.zeros(3)
+            pelvis_quat = data.qpos[3:7].copy()
+            li_pos = data.xpos[left_index_tip_id].copy() if left_index_tip_id != -1 else np.zeros(3)
+            ri_pos = data.xpos[right_index_tip_id].copy() if right_index_tip_id != -1 else np.zeros(3)
+
+            trajectory_log.append({
+                "time": data.time,
+                "pelvis_pos": pelvis_pos,
+                "pelvis_quat": pelvis_quat,
+                "left_index_pos": li_pos,
+                "right_index_pos": ri_pos
+            })
 
         step_counter += 1
 
@@ -362,10 +415,14 @@ def main():
             viewer.cam.lookat = np.array([0.0, 0.0, 0.5])
 
             start_time = time.time()
-            while viewer.is_running() and data.time < sim_duration:
+            sequence_done_announced = False
+            # Runs until the viewer window is closed manually: the scripted
+            # stand/walk/turn sequence plays out, then the robot holds an idle
+            # stand (loco_cmd reverts to [0, 0, 0] in sim_step) indefinitely.
+            while viewer.is_running():
                 # Calculate the target simulation time based on wall-clock elapsed time
                 target_sim_time = (time.time() - start_time) * args.realtime_scale
-                
+
                 # Step the physics until simulation time catches up to wall-clock time
                 # Limit the steps per sync iteration to prevent simulation locking
                 max_steps_per_sync = int(0.05 / model.opt.timestep)  # max 50ms of physics steps per sync
@@ -373,7 +430,12 @@ def main():
                 while data.time < target_sim_time and steps < max_steps_per_sync:
                     sim_step()
                     steps += 1
-                
+
+                if not sequence_done_announced and data.time >= sim_duration:
+                    print("-" * 105)
+                    print("Scripted sequence complete -- idle standing. Close the viewer window to exit.")
+                    sequence_done_announced = True
+
                 viewer.sync()
                 # Yield CPU to keep window responsive and maintain accurate timekeeping
                 time.sleep(0.001)
@@ -386,7 +448,7 @@ def main():
     print("Simulation run completed successfully.")
 
     # Save log to CSV file
-    log_path = os.path.join(script_dir, "simulation_walk.log")
+    log_path = os.path.join(root_dir, "simulation_walk.log")
     with open(log_path, "w") as f:
         f.write("time,pelvis_x,pelvis_y,pelvis_z,pelvis_qw,pelvis_qx,pelvis_qy,pelvis_qz,left_index_x,left_index_y,left_index_z,right_index_x,right_index_y,right_index_z\n")
         for entry in trajectory_log:

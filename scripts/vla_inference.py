@@ -10,8 +10,11 @@
 """
 
 import os
+import sys
 import time
 import numpy as np
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src", "g1_control"))
 from vla_env import G1VLAEnv
 
 # Flag to easily switch between actual model loading and mock inference testing

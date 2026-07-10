@@ -14,9 +14,10 @@ import mujoco
 
 class G1VLAEnv:
     def __init__(self):
-        # Resolve local scene XML path in current folder (standalone)
+        # Resolve scene XML path relative to the repo root (src/g1_control -> repo root)
         self.script_dir = os.path.dirname(os.path.abspath(__file__))
-        self.scene_xml = os.path.join(self.script_dir, "apple_table_scene.xml")
+        self.root_dir = os.path.dirname(os.path.dirname(self.script_dir))
+        self.scene_xml = os.path.join(self.root_dir, "scenes", "mujoco", "apple_table_scene.xml")
         
         if not os.path.exists(self.scene_xml):
             raise FileNotFoundError(f"Base scene XML not found at {self.scene_xml}")
@@ -26,8 +27,8 @@ class G1VLAEnv:
         self.data = mujoco.MjData(self.model)
         
         # Configure off-screen camera renderer (resolution expected by VLA, typically 224x224 or 256x256)
-        self.width = 224
-        self.height = 224
+        self.width = 640
+        self.height = 480
         self.renderer = mujoco.Renderer(self.model, self.height, self.width)
         
         # Resolve joint addresses
