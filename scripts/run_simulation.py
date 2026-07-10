@@ -22,7 +22,8 @@ def main():
     args = parser.parse_args()
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    urdf_path = os.path.join(script_dir, "g1_fixed.urdf")
+    root_dir = os.path.dirname(script_dir)
+    urdf_path = os.path.join(root_dir, "assets", "robots", "g1_fixed.urdf")
 
     print("=== Principal MuJoCo Simulation: Headless G1 Run ===")
     print(f"Loading fixed URDF: {urdf_path}")
@@ -110,7 +111,7 @@ def main():
     print("Simulation run completed successfully.")
     
     # Save log to file
-    log_path = os.path.join(script_dir, "simulation_run.log")
+    log_path = os.path.join(root_dir, "simulation_run.log")
     with open(log_path, "w") as f:
         f.write("Time,Torso_Z,Waist_Yaw,Left_Index_Proximal\n")
         for entry in trajectory_log:

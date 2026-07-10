@@ -73,6 +73,12 @@ Each hand features five fully-articulated fingers with high-resolution collision
 
 ## 🚀 Usage
 
+## Setup
+
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
 ### Relative Paths & ROS/ROS 2
 The URDF file references meshes using relative paths:
 ```xml

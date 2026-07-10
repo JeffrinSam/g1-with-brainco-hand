@@ -23,7 +23,8 @@ import mujoco.viewer
 
 # 1. Load standalone scene assets
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-SCENE_XML = os.path.join(SCRIPT_DIR, "apple_table_scene.xml")
+ROOT_DIR = os.path.dirname(SCRIPT_DIR)
+SCENE_XML = os.path.join(ROOT_DIR, "scenes", "mujoco", "apple_table_scene.xml")
 model = mujoco.MjModel.from_xml_path(SCENE_XML)
 data  = mujoco.MjData(model)
 

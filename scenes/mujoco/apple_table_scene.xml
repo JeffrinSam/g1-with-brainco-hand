@@ -1,6 +1,6 @@
 <mujoco model="g1_apple_table_scene">
 
-  <compiler angle="radian" meshdir="."/>
+  <compiler angle="radian" meshdir="../.."/>
 
   <option timestep="0.002" gravity="0 0 -9.81" solver="CG" iterations="50" tolerance="1e-10"/>
 
@@ -8,6 +8,7 @@
     <quality shadowsize="4096" offsamples="8"/>
     <map shadowclip="0.5" shadowscale="1.5" znear="0.01"/>
     <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0.1 0.1 0.1"/>
+    <global offwidth="640" offheight="480"/>
   </visual>
 
   <asset>
@@ -88,6 +89,6 @@
   </worldbody>
 
   <!-- Include G1 robot configuration directly, relying on compiler meshdir to resolve meshes -->
-  <include file="g1_fixed_manipulation.xml"/>
+  <include file="../../g1_fixed_manipulation.xml"/>
 
 </mujoco>
