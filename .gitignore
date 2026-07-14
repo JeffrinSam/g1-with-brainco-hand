@@ -16,7 +16,7 @@ __pycache__/
 logs/
 checkpoints/
 runs/
-
+MUJOCO_LOG.TXT
 # Explicitly allow policy weights
 !*.onnx
 .venv/
