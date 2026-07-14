@@ -1,94 +1,82 @@
-# Unitree G1 with BrainCo Dexterous Hand (URDF Model)
+# Unitree G1 MuJoCo Simulation & VLA Inference
 
-This repository contains the Unified Robot Description Format (URDF) model and 3D visual/collision meshes for the **Unitree G1 humanoid robot** equipped with the **BrainCo Dexterous Hands**.
+MuJoCo simulation environment and control scripts for the Unitree G1 humanoid robot, including whole-body control, RL training, and VLA (vision-language-action) policy inference.
 
-This description can be used for simulation, visualization (RViz), and kinematic/dynamic calculations (e.g., in MuJoCo, PyBullet, or ROS).
+## Setup with uv
 
----
+This project uses [`uv`](https://docs.astral.sh/uv/) for dependency management, with dependencies pinned in `uv.lock`.
 
-## 🤖 Robot Specifications
+### 1. Install uv
 
-* **Robot Name**: `g1_29dof_mode_15_brainco_hand`
-* **Total Base Degrees of Freedom (DoF)**: 29 Active DoF (excluding hands)
-* **Hand Type**: Left and Right BrainCo Dexterous Hands (5 articulated fingers per hand)
+```bash
+# macOS / Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
----
+# Windows (PowerShell)
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
 
-## 📂 Repository Structure
+Verify the install:
+
+```bash
+uv --version
+```
+
+### 2. Clone the repository
+
+```bash
+git clone <repo-url>
+cd mechecm
+```
+
+### 3. Sync the environment
+
+`uv sync` reads `pyproject.toml` and `uv.lock` and creates a `.venv` with the exact pinned dependency versions:
+
+```bash
+uv sync
+```
+
+This requires Python >= 3.13 (see `pyproject.toml`); `uv` will download a matching Python automatically if one isn't already installed.
+
+### 4. Run scripts
+
+Use `uv run` to execute scripts inside the managed environment without manually activating it:
+
+```bash
+uv run python scripts/run_simulation.py
+uv run python scripts/vla_inference.py
+uv run python scripts/visualize_g1.py
+```
+
+Alternatively, activate the virtual environment directly:
+
+```bash
+# macOS / Linux
+source .venv/bin/activate
+
+# Windows (PowerShell)
+.venv\Scripts\Activate.ps1
+```
+
+### Adding or updating dependencies
+
+```bash
+uv add <package>       # add a new dependency and update uv.lock
+uv lock --upgrade       # refresh the lockfile
+```
+
+## Project Structure
 
 ```text
-g1_with_brainco_hand/
-├── README.md                              # This detailed documentation
-├── g1_29dof_mode_15_brainco_hand.urdf     # Main Unified Robot Description Format (URDF) file
-└── meshes/                                # Visual and collision STL files
-    ├── pelvis_ver0529.STL
-    ├── head_link.STL
-    ├── left_hip_pitch_link.STL
-    ├── ... (other link meshes)
-    └── right_rubber_hand.STL
+├── config/            # Modality/config definitions
+├── meshes/             # Robot STL meshes (Unitree G1 + BrainCo hands)
+├── model_policy/       # Trained ONNX policies (stand, walk)
+├── scenes/mujoco/      # MuJoCo scene XMLs
+├── scripts/            # Entry point scripts (simulation, training, VLA inference)
+├── src/g1_control/     # Core control / environment code
+├── g1_fixed_floating.xml       # Full G1 MuJoCo model (floating base)
+├── g1_fixed_manipulation.xml   # G1 MuJoCo model (fixed base, manipulation)
+├── pyproject.toml
+└── uv.lock
 ```
-
----
-
-## ⚙️ Joint Configuration Details
-
-### 1. Torso & Waist
-* `waist_yaw_joint` (Revolute)
-* `waist_roll_joint` (Revolute)
-* `waist_pitch_joint` (Revolute)
-
-### 2. Legs (Left & Right)
-* `[left/right]_hip_pitch_joint` (Revolute)
-* `[left/right]_hip_roll_joint` (Revolute)
-* `[left/right]_hip_yaw_joint` (Revolute)
-* `[left/right]_knee_joint` (Revolute)
-* `[left/right]_ankle_pitch_joint` (Revolute)
-* `[left/right]_ankle_roll_joint` (Revolute)
-
-### 3. Arms (Left & Right)
-* `[left/right]_shoulder_pitch_joint` (Revolute)
-* `[left/right]_shoulder_roll_joint` (Revolute)
-* `[left/right]_shoulder_yaw_joint` (Revolute)
-* `[left/right]_elbow_joint` (Revolute)
-* `[left/right]_wrist_roll_joint` (Revolute)
-* `[left/right]_wrist_pitch_joint` (Revolute)
-* `[left/right]_wrist_yaw_joint` (Revolute)
-
-### 4. Dexterous Hands (BrainCo)
-Each hand features five fully-articulated fingers with high-resolution collision/visual meshes:
-* **Thumb**: Metacarpal, Proximal, Distal, and Tip joints.
-* **Index**: Proximal, Distal, and Tip joints.
-* **Middle**: Proximal, Distal, and Tip joints.
-* **Ring**: Proximal, Distal, and Tip joints.
-* **Pinky**: Proximal, Distal, and Tip joints.
-
-### 5. Sensors & Auxiliary (Fixed Joints)
-* `head_joint` (fixed)
-* `imu_in_torso_joint` (fixed)
-* `imu_in_pelvis_joint` (fixed)
-* `d435_joint` (Intel RealSense D435 camera mount)
-* `mid360_joint` (Livox Mid-360 LiDAR mount)
-
----
-
-## 🚀 Usage
-
-### Relative Paths & ROS/ROS 2
-The URDF file references meshes using relative paths:
-```xml
-<mesh filename="meshes/pelvis_ver0529.STL"/>
-```
-* **For Direct Use (e.g. PyBullet / MuJoCo)**: The paths will resolve automatically as long as the relative directory structure is preserved.
-* **For ROS/ROS 2 package systems**: You may want to prefix the paths with `package://<your_package_name>/` (e.g., `package://g1_description/meshes/...`) depending on your workspace setup.
-
-### MuJoCo Integration
-The model includes preconfigured settings for MuJoCo compiler compatibility:
-```xml
-<mujoco>
-  <compiler meshdir="meshes" discardvisual="false" balanceinertia="true"/>
-</mujoco>
-```
-
----
-
-*Extracted and organized from the official [unitree_ros](https://github.com/unitreerobotics/unitree_ros) repository.*

@@ -19,3 +19,6 @@ runs/
 
 # Explicitly allow policy weights
 !*.onnx
+.venv/
+camera_frames/
+.DS_Store

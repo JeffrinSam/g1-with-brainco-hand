@@ -20,8 +20,10 @@ def main():
     args = parser.parse_args()
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    urdf_path = os.path.join(script_dir, "g1_29dof_mode_15_brainco_hand.urdf")
-    fixed_urdf_path = os.path.join(script_dir, "g1_fixed.urdf")
+    root_dir = os.path.dirname(script_dir)
+    robots_dir = os.path.join(root_dir, "assets", "robots")
+    urdf_path = os.path.join(robots_dir, "g1_29dof_mode_15_brainco_hand.urdf")
+    fixed_urdf_path = os.path.join(robots_dir, "g1_fixed.urdf")
 
     # 1. Read URDF and resolve meshdir paths
     print(f"Reading URDF from: {urdf_path}")

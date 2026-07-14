@@ -10,14 +10,14 @@ Features:
 """
 
 import os
-import time
+import time #time-related tasks, pausing code execution, and measuring performance
 import argparse
 import collections
 import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
 import mujoco
-import torch
+import torch #building, training, and deploying deep learning models, such as neural networks for AI applications
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
 from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
@@ -33,7 +33,8 @@ class G1JumpEnv(gym.Env):
         
         self.render_mode = render_mode
         self.script_dir = os.path.dirname(os.path.abspath(__file__))
-        self.scene_path = os.path.join(self.script_dir, "g1_walk_scene.xml")
+        self.root_dir = os.path.dirname(self.script_dir)
+        self.scene_path = os.path.join(self.root_dir, "scenes", "mujoco", "g1_walk_scene.xml")
         
         # Load model and data
         self.model = mujoco.MjModel.from_xml_path(self.scene_path)
@@ -294,7 +295,7 @@ class G1JumpEnv(gym.Env):
 
     def render(self):
         if self.viewer is None:
-            from mujoco.viewer import launch_passive
+            from mujoco.viewer import launch_passive #handles issues of "frozen code" (like your code freezes when simulation is launched - the latter opens in a separate window) and interactive usage (you can click, play with a robo to test how it reacts)
             self.viewer = launch_passive(self.model, self.data)
             self.viewer.cam.azimuth = 180
             self.viewer.cam.elevation = -15
