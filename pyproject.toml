@@ -1,0 +1,22 @@
+[project]
+name = "prjct1-mujoco"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "absl-py==2.5.0",
+    "etils==1.14.0",
+    "flatbuffers==25.12.19",
+    "fsspec==2026.6.0",
+    "glfw==2.10.0",
+    "mujoco==3.10.0",
+    "numpy==2.5.1",
+    "onnxruntime==1.27.0",
+    "packaging==26.2",
+    "pillow==12.3.0",
+    "protobuf==7.35.1",
+    "pyopengl==3.1.10",
+    "typing-extensions==4.16.0",
+    "zipp==4.1.0",
+]
