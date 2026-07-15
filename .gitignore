@@ -21,4 +21,4 @@ runs/
 !*.onnx
 .venv/
 camera_frames/
-.DS_Store
+.DS_Storerevise/
