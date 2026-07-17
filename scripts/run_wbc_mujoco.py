@@ -20,6 +20,30 @@ import mujoco
 import mujoco.viewer
 import numpy as np
 import onnxruntime as ort
+import yaml
+
+def load_robot_params(path):
+    with open(path, "r") as f:
+        return yaml.safe_load(f)
+
+def expand_group_gains(joint_names, groups):
+    """Expand per-joint-group kp/kd/ki gains (from robot_params.yaml) into
+    per-joint arrays, matching the order of joint_names. Group membership is
+    determined by substring match against each joint's name (e.g. "hip" matches
+    left_hip_pitch_joint, right_hip_roll_joint, etc.)."""
+    kps, kds, kis = [], [], []
+    for name in joint_names:
+        for group_name, gains in groups.items():
+            if group_name in name:
+                kps.append(gains["kp"])
+                kds.append(gains["kd"])
+                kis.append(gains["ki"])
+                break
+        else:
+            raise ValueError(f"No gain group found for joint '{name}'")
+    return (np.array(kps, dtype=np.float32),
+            np.array(kds, dtype=np.float32),
+            np.array(kis, dtype=np.float32))
 
 def pd_control(target_q, q, kp, target_dq, dq, kd):
     return (target_q - q) * kp + (target_dq - dq) * kd
@@ -127,20 +151,22 @@ def compute_observation(data, qj, dqj, action, loco_cmd, height_cmd, rpy_cmd, co
     return single_obs
 
 def main():
-    parser = argparse.ArgumentParser(description="G1 Walk & Stand WBC Simulation in MuJoCo")
-    parser.add_argument("--render-mode", type=str, default="human", choices=["human", "none"],
-                        help="Render mode ('human' for window visualization, 'none' for headless)")
-    parser.add_argument("--walk-speed", type=float, default=0.8,
-                        help="Walking forward speed command (m/s) (default: 0.8)")
-    parser.add_argument("--realtime-scale", type=float, default=1.0,
-                        help="Realtime scaling factor for visual rendering (e.g. 1.0 for real-time) (default: 1.0)")
-    args = parser.parse_args()
-
     script_dir = os.path.dirname(os.path.abspath(__file__))
     root_dir = os.path.dirname(script_dir)
     scene_path = os.path.join(root_dir, "scenes", "mujoco", "g1_walk_scene.xml")
     stand_onnx_path = os.path.join(root_dir, "model_policy", "stand.onnx")
     walk_onnx_path = os.path.join(root_dir, "model_policy", "walk.onnx")
+    robot_params_path = os.path.join(root_dir, "config", "robot_params.yaml")
+    robot_params = load_robot_params(robot_params_path)
+
+    parser = argparse.ArgumentParser(description="G1 Walk & Stand WBC Simulation in MuJoCo")
+    parser.add_argument("--render-mode", type=str, default="human", choices=["human", "none"],
+                        help="Render mode ('human' for window visualization, 'none' for headless)")
+    parser.add_argument("--walk-speed", type=float, default=robot_params["walk_speed"],
+                        help=f"Walking forward speed command (m/s) (default: {robot_params['walk_speed']})")
+    parser.add_argument("--realtime-scale", type=float, default=1.0,
+                        help="Realtime scaling factor for visual rendering (e.g. 1.0 for real-time) (default: 1.0)")
+    args = parser.parse_args()
 
     print("=== Principal MuJoCo Simulation: G1 Walking Controller ===")
     print(f"Loading compiled scene: {scene_path}")
@@ -189,7 +215,7 @@ def main():
 
     # Configure simulation time
     model.opt.timestep = 0.002
-    control_decimation = 10  # 10 * 2ms = 20ms (50Hz) control update rate
+    control_decimation = robot_params["control_decimation"]  # 10 * 2ms = 20ms (50Hz) control update rate
     print(f"Simulation timestep set to {model.opt.timestep}s")
     print(f"Control frequency set to {1.0 / (model.opt.timestep * control_decimation)}Hz")
 
@@ -230,31 +256,31 @@ def main():
     hand_joint_ids, hand_qpos_adrs, hand_dof_adrs = find_joint_info(model, hand_joint_names)
     body_joint_ids, body_qpos_adrs, body_dof_adrs = find_joint_info(model, body_joint_names)
 
+    # Leg/waist PD gains, expanded from the per-joint-group values in robot_params.yaml
+    leg_kps, leg_kds, leg_kis = expand_group_gains(leg_joint_names, robot_params["leg_joints"])
+
     # Policy Configuration
     config = {
         "cmd_scale": np.array([2.0, 2.0, 0.5], dtype=np.float32),
         "ang_vel_scale": 0.5,
         "dof_pos_scale": 1.0,
         "dof_vel_scale": 0.05,
-        "action_scale": 0.25,
+        "action_scale": robot_params["action_scale"],
         "default_angles": np.array([-0.1, 0.0, 0.0, 0.3, -0.2, 0.0,
                                     -0.1, 0.0, 0.0, 0.3, -0.2, 0.0,
                                      0.0, 0.0, 0.0], dtype=np.float32),
-        "kps": np.array([150, 150, 150, 200, 40, 40,
-                         150, 150, 150, 200, 40, 40,
-                         250.0, 250.0, 250.0], dtype=np.float32),
-        "kds": np.array([2.0, 2.0, 2.0, 4.0, 2.0, 2.0,
-                         2.0, 2.0, 2.0, 4.0, 2.0, 2.0,
-                         5.0, 5.0, 5.0], dtype=np.float32),
-        "height_cmd": 0.74,
+        "kps": leg_kps,
+        "kds": leg_kds,
+        "kis": leg_kis,
+        "height_cmd": robot_params["standing_height"],
         "rpy_cmd": np.array([0.0, 0.0, 0.0], dtype=np.float32),
     }
 
     # Arm and hand PD parameters (zero target targets)
-    arm_kps = np.full(14, 100.0, dtype=np.float32)
-    arm_kds = np.full(14, 2.0, dtype=np.float32)
-    hand_kps = np.full(32, 50.0, dtype=np.float32)
-    hand_kds = np.full(32, 1.0, dtype=np.float32)
+    arm_kps = np.full(14, robot_params["arm_joints"]["kp"], dtype=np.float32)
+    arm_kds = np.full(14, robot_params["arm_joints"]["kd"], dtype=np.float32)
+    hand_kps = np.full(32, robot_params["hand_joints"]["kp"], dtype=np.float32)
+    hand_kds = np.full(32, robot_params["hand_joints"]["kd"], dtype=np.float32)
 
     # Initialize ONNX inference sessions
     print("Initializing ONNX Inference Sessions...")
@@ -264,7 +290,7 @@ def main():
     # Set initial posture and coordinates in MjData
     data.qpos[0] = 0.0   # Pelvis X
     data.qpos[1] = 0.0   # Pelvis Y
-    data.qpos[2] = 0.74  # Pelvis Z (standing height)
+    data.qpos[2] = config["height_cmd"]  # Pelvis Z (standing height)
     data.qpos[3:7] = [1.0, 0.0, 0.0, 0.0]  # identity orientation quaternion
 
     # Set legs to default angles

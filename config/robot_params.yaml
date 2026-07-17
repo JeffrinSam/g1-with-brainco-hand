@@ -1,0 +1,36 @@
+# Tunable PD control gains and locomotion parameters for scripts/run_wbc_mujoco.py
+# Gains are grouped by joint type; each leg-joint group (hip, knee, ankle, waist)
+# applies symmetrically to both the left and right side.
+
+leg_joints:
+  hip:
+    kp: 150.0
+    kd: 2.0
+    ki: 0.0
+  knee:
+    kp: 200.0
+    kd: 4.0
+    ki: 0.0
+  ankle:
+    kp: 40.0
+    kd: 2.0
+    ki: 0.0
+  waist:
+    kp: 250.0
+    kd: 5.0
+    ki: 0.0
+
+arm_joints:
+  kp: 100.0
+  kd: 2.0
+  ki: 0.0
+
+hand_joints:
+  kp: 50.0
+  kd: 1.0
+  ki: 0.0
+
+standing_height: 0.74
+action_scale: 0.25
+walk_speed: 0.8
+control_decimation: 10
