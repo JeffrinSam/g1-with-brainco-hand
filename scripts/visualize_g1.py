@@ -1,9 +1,21 @@
 """
 visualize_g1.py
 
-A script to visualize the Unitree G1 robot with BrainCo Dexterous Hands in MuJoCo.
-It automatically reads the URDF, prepares a fixed version with corrected mesh paths,
-and launches the interactive MuJoCo passive viewer.
+Reads assets/robots/g1_29dof_mode_15_brainco_hand.urdf, clears its
+meshdir="meshes" attribute (so mesh paths resolve relative to the URDF's own
+folder), writes the result to assets/robots/g1_fixed.urdf, then loads and
+visualizes that fixed URDF in the interactive passive viewer. Gravity is off
+by default so the robot doesn't collapse; the base is fixed to the world
+unless --free-base is passed.
+
+Usage Examples:
+----------------
+1. Inspect the robot standing still, gravity off, fixed base (macOS needs
+   `mjpython` in place of `python`):
+       mjpython scripts/visualize_g1.py
+
+2. Let it fall under gravity with a free-floating base:
+       mjpython scripts/visualize_g1.py --gravity --free-base
 """
 
 import os
@@ -14,6 +26,7 @@ import mujoco.viewer
 import numpy as np
 
 def main():
+    """Patch the raw URDF's meshdir, write it as g1_fixed.urdf, then load and open the passive viewer."""
     parser = argparse.ArgumentParser(description="Visualize G1 with BrainCo Hands in MuJoCo")
     parser.add_argument("--gravity", action="store_true", help="Enable gravity (disabled by default to prevent collapse)")
     parser.add_argument("--free-base", action="store_true", help="Enable free-floating base (otherwise fixed to world)")

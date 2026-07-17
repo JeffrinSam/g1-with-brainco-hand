@@ -1,15 +1,23 @@
 """
 run_wbc_mujoco.py
 
-A self-contained script to run G1 humanoid robot with BrainCo Dexterous Hands in MuJoCo,
-utilizing stand.onnx and walk.onnx policies via standard ONNX runtime.
-Features:
-- Loads the g1_fixed_floating_scene.urdf.
-- Maps joints dynamically between URDF index order and policy observation index order.
-- Simulates standing and walking trajectories under gravity.
-- Implements PD feedback control applied via qfrc_applied.
-- Supports passive viewer or headless execution modes.
-- Generates a simulation_walk.log recording pelvis and index finger trajectories.
+Runs the G1 humanoid through a scripted stand -> walk -> waypoint-navigation
+sequence in MuJoCo, using the stand.onnx / walk.onnx WBC policies via ONNX
+Runtime, with PD control applied via qfrc_applied. Loads scenes/mujoco/
+g1_walk_scene.xml, and PD gains / standing height / action scale / walk
+speed / control decimation from config/robot_params.yaml. Logs pelvis and
+fingertip trajectories to simulation_walk.log.
+
+Usage Examples:
+----------------
+1. Interactive viewer (macOS needs `mjpython` in place of `python`):
+       mjpython scripts/run_wbc_mujoco.py
+
+2. Headless, faster than real time, log-only:
+       python scripts/run_wbc_mujoco.py --render-mode none
+
+3. Slow down/speed up the viewer's playback (0.5 = half speed):
+       mjpython scripts/run_wbc_mujoco.py --realtime-scale 0.5
 """
 
 import os
@@ -23,6 +31,7 @@ import onnxruntime as ort
 import yaml
 
 def load_robot_params(path):
+    """Load robot_params.yaml (PD gains, standing height, etc.) as a dict."""
     with open(path, "r") as f:
         return yaml.safe_load(f)
 
@@ -46,9 +55,11 @@ def expand_group_gains(joint_names, groups):
             np.array(kis, dtype=np.float32))
 
 def pd_control(target_q, q, kp, target_dq, dq, kd):
+    """Standard PD control law: torque = kp*(target_q - q) + kd*(target_dq - dq)."""
     return (target_q - q) * kp + (target_dq - dq) * kd
 
 def quat_rotate_inverse(q, v):
+    """Rotate world-frame vector v into the frame of quaternion q (i.e. apply q's inverse)."""
     w, x, y, z = q
     q_conj = np.array([w, -x, -y, -z])
     return np.array([
@@ -64,6 +75,7 @@ def quat_rotate_inverse(q, v):
     ], dtype=np.float32)
 
 def get_gravity_orientation(quat):
+    """Project the world "down" vector into the body frame — tells the policy which way is down."""
     gravity_vec = np.array([0.0, 0.0, -1.0], dtype=np.float32)
     return quat_rotate_inverse(quat, gravity_vec)
 
@@ -109,6 +121,7 @@ WAYPOINTS = [
 ]
 
 def find_joint_info(model, names):
+    """Look up each named joint's id, qpos address, and dof (velocity) address."""
     ids = []
     qpos_adrs = []
     dof_adrs = []
@@ -122,6 +135,9 @@ def find_joint_info(model, names):
     return ids, qpos_adrs, dof_adrs
 
 def compute_observation(data, qj, dqj, action, loco_cmd, height_cmd, rpy_cmd, config):
+    """Build one 86-element WBC policy observation: 7 commands (loco_cmd,
+    height, rpy) + 3 angular velocity + 3 gravity direction + 29 joint
+    positions + 29 joint velocities + 15 previous action."""
     # 7 commands
     command = np.zeros(7, dtype=np.float32)
     command[:3] = loco_cmd[:3] * config["cmd_scale"]
@@ -151,6 +167,8 @@ def compute_observation(data, qj, dqj, action, loco_cmd, height_cmd, rpy_cmd, co
     return single_obs
 
 def main():
+    """Load the scene and WBC policies, then run the scripted stand/walk/
+    waypoint sequence (see render-mode/walk-speed/realtime-scale flags above)."""
     script_dir = os.path.dirname(os.path.abspath(__file__))
     root_dir = os.path.dirname(script_dir)
     scene_path = os.path.join(root_dir, "scenes", "mujoco", "g1_walk_scene.xml")
@@ -329,6 +347,9 @@ def main():
     print("-" * 105)
 
     def sim_step():
+        """One 2ms physics step: steer toward the current waypoint, run WBC
+        policy inference every control_decimation steps, apply PD torques,
+        advance physics, and log."""
         nonlocal step_counter, target_dof_pos, action, loco_cmd, waypoint_idx
 
         # 1. Steer toward the current waypoint based on pelvis position and yaw

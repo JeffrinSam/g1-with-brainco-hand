@@ -1,18 +1,15 @@
 """
-================================================================================
-  visualize_ego.py - Visualize the G1 Robot's Ego-centric Head Camera
-  
-  PURPOSE:
-    Launches the passive viewer showing the G1 robot standing in front of the
-    table with the apple.
-    
-    This script displays the G1 robot's point of view (ego-centric view)
-    using the 'head_camera' config.
-    
-  RUN:
-    cd D:/Personal/Mujcotutorial
-    .venv/Scripts/python g1_vla_inference/visualize_ego.py
-================================================================================
+visualize_ego.py - Visualize the G1 Robot's Ego-centric Head Camera
+
+Loads scenes/mujoco/apple_table_scene.xml, poses the robot in front of the
+apple/table, and opens the passive viewer locked to the robot's own
+'head_camera' — i.e. what the robot itself would see. No CLI flags; scene
+loading happens at import time, so run directly rather than importing.
+
+Usage Examples:
+----------------
+1. Run with the interactive viewer (macOS needs `mjpython` in place of `python`):
+       mjpython scripts/visualize_ego.py
 """
 
 import os
@@ -42,6 +39,7 @@ LEG_JOINT_NAMES = [
 ]
 
 def get_joint_addrs(model, names):
+    """Return the qpos address for each named joint, in order."""
     qpos_adrs = []
     for name in names:
         jid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, name)
@@ -56,6 +54,7 @@ leg_default = np.array([-0.1, 0, 0, 0.3, -0.2, 0, -0.1, 0, 0, 0.3, -0.2, 0, 0, 0
 left_arm_home = np.array([0.71, 0.40, -0.14, -0.73, 0.68, 0.73, -0.98], dtype=np.float64)
 
 def reset_scene():
+    """Reset to a standing home pose (left arm reaching toward the table) with the apple placed on it."""
     mujoco.mj_resetData(model, data)
     pelvis_jid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, "floating_base_joint")
     if pelvis_jid != -1:
@@ -77,6 +76,7 @@ def reset_scene():
     mujoco.mj_forward(model, data)
 
 def main():
+    """Reset the scene and open the passive viewer locked to the robot's head_camera."""
     reset_scene()
     
     print("\n=== Launching Ego-centric Head Camera Viewer ===")
