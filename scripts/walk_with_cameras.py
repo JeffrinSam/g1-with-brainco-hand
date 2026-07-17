@@ -10,7 +10,18 @@ capture from the robot's two onboard cameras:
 Frames are saved as PNGs under --camera-out-dir/head_camera and
 --camera-out-dir/chest_camera every --capture-interval seconds of simulated
 time, only during the scripted stand/walk/turn sequence (not during the
-indefinite idle-standing phase that follows in human render mode).
+indefinite idle-standing phase that follows in human render mode). Note:
+--camera-width/--camera-height are accepted but currently unused — frame
+size is hardcoded (640x480 head, 1280x720 chest) where the renderers are set up.
+
+Usage Examples:
+----------------
+1. Run with the interactive viewer, saving frames to ./camera_frames
+   (macOS needs `mjpython` in place of `python`):
+       mjpython scripts/walk_with_cameras.py
+
+2. Headless, custom output directory and capture rate:
+       python scripts/walk_with_cameras.py --render-mode none --camera-out-dir captures/run1 --capture-interval 0.25
 """
 
 import os
@@ -25,9 +36,11 @@ import onnxruntime as ort
 from PIL import Image
 
 def pd_control(target_q, q, kp, target_dq, dq, kd):
+    """Standard PD control law: torque = kp*(target_q - q) + kd*(target_dq - dq)."""
     return (target_q - q) * kp + (target_dq - dq) * kd
 
 def quat_rotate_inverse(q, v):
+    """Rotate world-frame vector v into the frame of quaternion q (i.e. apply q's inverse)."""
     w, x, y, z = q
     q_conj = np.array([w, -x, -y, -z])
     return np.array([
@@ -43,10 +56,12 @@ def quat_rotate_inverse(q, v):
     ], dtype=np.float32)
 
 def get_gravity_orientation(quat):
+    """Project the world "down" vector into the body frame — tells the policy which way is down."""
     gravity_vec = np.array([0.0, 0.0, -1.0], dtype=np.float32)
     return quat_rotate_inverse(quat, gravity_vec)
 
 def find_joint_info(model, names):
+    """Look up each named joint's id, qpos address, and dof (velocity) address."""
     ids = []
     qpos_adrs = []
     dof_adrs = []
@@ -60,6 +75,9 @@ def find_joint_info(model, names):
     return ids, qpos_adrs, dof_adrs
 
 def compute_observation(data, qj, dqj, action, loco_cmd, height_cmd, rpy_cmd, config):
+    """Build one 86-element WBC policy observation: 7 commands (loco_cmd,
+    height, rpy) + 3 angular velocity + 3 gravity direction + 29 joint
+    positions + 29 joint velocities + 15 previous action."""
     # 7 commands
     command = np.zeros(7, dtype=np.float32)
     command[:3] = loco_cmd[:3] * config["cmd_scale"]
@@ -89,6 +107,8 @@ def compute_observation(data, qj, dqj, action, loco_cmd, height_cmd, rpy_cmd, co
     return single_obs
 
 def main():
+    """Load the scene and WBC policies, then run the scripted stand/walk/turn
+    sequence while periodically capturing head/chest camera frames."""
     parser = argparse.ArgumentParser(description="G1 Walk & Stand WBC Simulation in MuJoCo, with onboard camera capture")
     parser.add_argument("--render-mode", type=str, default="human", choices=["human", "none"],
                         help="Render mode ('human' for window visualization, 'none' for headless)")
@@ -319,6 +339,9 @@ def main():
         frame_idx += 1
 
     def sim_step():
+        """One 2ms physics step: update loco_cmd from the scripted time
+        profile, run WBC policy inference every control_decimation steps,
+        apply PD torques, advance physics, log, and maybe capture a frame."""
         nonlocal step_counter, target_dof_pos, action, loco_cmd
 
         # 1. Update commands based on time profile

@@ -1,13 +1,19 @@
 """
 run_simulation.py
 
-A self-contained script to run a headless physical simulation of the Unitree G1 
-robot with BrainCo Dexterous Hands in MuJoCo 3.3.3+.
-This script demonstrates:
-1. Loading the compiled g1_fixed.urdf.
-2. Initializing MjModel and MjData.
-3. Simulating 1.0 second of simulation time headlessly.
-4. Logging key joint states at 0.1-second intervals.
+Headless (no viewer) sanity-check simulation of the G1 + BrainCo hands from
+assets/robots/g1_fixed.urdf, with gravity disabled so the robot just sits in
+place. Prints torso/waist/finger joint values every 0.1s and writes them to
+simulation_run.log. Useful for confirming the URDF compiles and actuators
+are wired up correctly, without needing a display.
+
+Usage Examples:
+----------------
+1. Default 1-second run:
+       python scripts/run_simulation.py
+
+2. Longer run at a coarser timestep:
+       python scripts/run_simulation.py --duration 5.0 --timestep 0.005
 """
 
 import os
@@ -16,6 +22,7 @@ import mujoco
 import numpy as np
 
 def main():
+    """Load g1_fixed.urdf, step physics headlessly for --duration seconds, and log joint values."""
     parser = argparse.ArgumentParser(description="Headless MuJoCo Simulation for Unitree G1 with BrainCo Hands")
     parser.add_argument("--duration", type=float, default=1.0, help="Simulation duration in seconds")
     parser.add_argument("--timestep", type=float, default=0.002, help="Physics simulation timestep")
@@ -77,6 +84,7 @@ def main():
     torso_body_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "torso_link")
 
     def get_joint_qpos_val(j_id):
+        """Return the qpos value for joint id j_id, or 0.0 if the joint wasn't found (-1)."""
         if j_id != -1:
             qpos_adr = model.jnt_qposadr[j_id]
             return data.qpos[qpos_adr]

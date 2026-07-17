@@ -1,12 +1,24 @@
 """
 train_g1_jump.py
 
-A self-contained reinforcement learning training script for the Unitree G1 humanoid robot in MuJoCo.
-Features:
-- Implements a custom Gymnasium environment (G1JumpEnv) wrapping the native MuJoCo scene.
-- Uses a phase-based dense reward structure (Crouch -> Explosive Jump -> Flight -> Landing & Balance).
-- Uses Stable-Baselines3 (PPO) to train the policy.
-- Supports training checkpointing, monitoring, and visual evaluation.
+Trains a G1 jumping/balancing policy from scratch with Stable-Baselines3 PPO,
+using a custom Gymnasium environment (G1JumpEnv) built directly on
+scenes/mujoco/g1_walk_scene.xml. Reward is phase-based on episode time
+(Crouch -> Explosive Jump -> Flight -> Landing & Balance — see step()).
+Runs 4 environments in parallel (SubprocVecEnv), checkpoints periodically,
+and can visually evaluate the trained policy afterward.
+
+Usage Examples:
+----------------
+1. Train with default settings (500,000 steps, saves to ./checkpoints):
+       python scripts/train_g1_jump.py
+
+2. Shorter training run, custom checkpoint directory:
+       python scripts/train_g1_jump.py --steps 50000 --checkpoint ./checkpoints/jump_v2
+
+3. Train, then open the interactive viewer to watch the trained policy jump
+   (macOS needs `mjpython` in place of `python` for the --eval viewer):
+       mjpython scripts/train_g1_jump.py --steps 50000 --eval
 """
 
 import os
@@ -25,6 +37,12 @@ from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
 class G1JumpEnv(gym.Env):
     """
     Custom Gymnasium Environment for Unitree G1 jumping and balancing.
+
+    Action: 29-element offsets (15 leg/waist + 14 arm) applied on top of
+    default_angles, PD-controlled at 50Hz (control_decimation physics steps
+    per env step). Observation: 70-element state (pelvis height, orientation,
+    linear/angular velocity, 29 joint positions, 29 joint velocities, episode
+    phase). Episodes run up to max_episode_steps (150 steps = 3.0s).
     """
     metadata = {"render_modes": ["human", "none"], "render_fps": 50}
 
@@ -131,6 +149,7 @@ class G1JumpEnv(gym.Env):
         self.step_counter = 0
 
     def _find_joint_info(self, names):
+        """Look up each named joint's id, qpos address, and dof (velocity) address."""
         ids, qpos_adrs, dof_adrs = [], [], []
         for name in names:
             j_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_JOINT, name)
@@ -142,6 +161,9 @@ class G1JumpEnv(gym.Env):
         return ids, qpos_adrs, dof_adrs
 
     def _get_obs(self):
+        """Assemble the 70-element observation: pelvis z, orientation quat,
+        base linear/angular velocity, 29 joint positions, 29 joint
+        velocities, and normalized episode-phase (step_counter / max_episode_steps)."""
         pelvis_z = self.data.qpos[2]
         quat = self.data.qpos[3:7]  # qw, qx, qy, qz
         lin_vel = self.data.qvel[0:3]
@@ -163,8 +185,9 @@ class G1JumpEnv(gym.Env):
         ]).astype(np.float32)
 
     def reset(self, seed=None, options=None):
+        """Reset to a standing pose at the default height/joint angles and zero the episode clock."""
         super().reset(seed=seed)
-        
+
         # Reset MjData state
         mujoco.mj_resetData(self.model, self.data)
         
@@ -186,6 +209,10 @@ class G1JumpEnv(gym.Env):
         return obs, {}
 
     def step(self, action):
+        """Apply the action as PD joint targets for control_decimation physics
+        steps, then score the resulting state with the phase-based reward
+        (crouch/thrust/flight/landing, see inline comments below) and check
+        for a fall/excessive-tilt termination."""
         # 1. Translate action values to joint targets
         # Clip actions to stay within boundaries
         action = np.clip(action, -1.0, 1.0)
@@ -294,6 +321,7 @@ class G1JumpEnv(gym.Env):
         return obs, reward, terminated, truncated, {}
 
     def render(self):
+        """Lazily open the passive viewer (first call) and sync it to the current state."""
         if self.viewer is None:
             from mujoco.viewer import launch_passive
             self.viewer = launch_passive(self.model, self.data)
@@ -305,11 +333,14 @@ class G1JumpEnv(gym.Env):
         self.viewer.sync()
 
     def close(self):
+        """Close the viewer, if one was opened."""
         if self.viewer is not None:
             self.viewer.close()
             self.viewer = None
 
 def main():
+    """Train a PPO jump/balance policy on 4 parallel G1JumpEnv instances,
+    checkpoint periodically, and optionally evaluate it visually afterward."""
     parser = argparse.ArgumentParser(description="Train G1 Humanoid Jumping & Balancing Policy")
     parser.add_argument("--steps", type=int, default=500000,
                         help="Number of training timesteps (default: 500,000)")

@@ -22,3 +22,5 @@ runs/
 .venv/
 camera_frames/
 .DS_Store
+meshes/
+revise/

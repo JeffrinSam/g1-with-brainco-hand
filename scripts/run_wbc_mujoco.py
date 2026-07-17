@@ -1,15 +1,23 @@
 """
 run_wbc_mujoco.py
 
-A self-contained script to run G1 humanoid robot with BrainCo Dexterous Hands in MuJoCo,
-utilizing stand.onnx and walk.onnx policies via standard ONNX runtime.
-Features:
-- Loads the g1_fixed_floating_scene.urdf.
-- Maps joints dynamically between URDF index order and policy observation index order.
-- Simulates standing and walking trajectories under gravity.
-- Implements PD feedback control applied via qfrc_applied.
-- Supports passive viewer or headless execution modes.
-- Generates a simulation_walk.log recording pelvis and index finger trajectories.
+Runs the G1 humanoid through a scripted stand -> walk -> waypoint-navigation
+sequence in MuJoCo, using the stand.onnx / walk.onnx WBC policies via ONNX
+Runtime, with PD control applied via qfrc_applied. Loads scenes/mujoco/
+g1_walk_scene.xml, and PD gains / standing height / action scale / walk
+speed / control decimation from config/robot_params.yaml. Logs pelvis and
+fingertip trajectories to simulation_walk.log.
+
+Usage Examples:
+----------------
+1. Interactive viewer (macOS needs `mjpython` in place of `python`):
+       mjpython scripts/run_wbc_mujoco.py
+
+2. Headless, faster than real time, log-only:
+       python scripts/run_wbc_mujoco.py --render-mode none
+
+3. Slow down/speed up the viewer's playback (0.5 = half speed):
+       mjpython scripts/run_wbc_mujoco.py --realtime-scale 0.5
 """
 
 import os
@@ -20,11 +28,38 @@ import mujoco
 import mujoco.viewer
 import numpy as np
 import onnxruntime as ort
+import yaml
+
+def load_robot_params(path):
+    """Load robot_params.yaml (PD gains, standing height, etc.) as a dict."""
+    with open(path, "r") as f:
+        return yaml.safe_load(f)
+
+def expand_group_gains(joint_names, groups):
+    """Expand per-joint-group kp/kd/ki gains (from robot_params.yaml) into
+    per-joint arrays, matching the order of joint_names. Group membership is
+    determined by substring match against each joint's name (e.g. "hip" matches
+    left_hip_pitch_joint, right_hip_roll_joint, etc.)."""
+    kps, kds, kis = [], [], []
+    for name in joint_names:
+        for group_name, gains in groups.items():
+            if group_name in name:
+                kps.append(gains["kp"])
+                kds.append(gains["kd"])
+                kis.append(gains["ki"])
+                break
+        else:
+            raise ValueError(f"No gain group found for joint '{name}'")
+    return (np.array(kps, dtype=np.float32),
+            np.array(kds, dtype=np.float32),
+            np.array(kis, dtype=np.float32))
 
 def pd_control(target_q, q, kp, target_dq, dq, kd):
+    """Standard PD control law: torque = kp*(target_q - q) + kd*(target_dq - dq)."""
     return (target_q - q) * kp + (target_dq - dq) * kd
 
 def quat_rotate_inverse(q, v):
+    """Rotate world-frame vector v into the frame of quaternion q (i.e. apply q's inverse)."""
     w, x, y, z = q
     q_conj = np.array([w, -x, -y, -z])
     return np.array([
@@ -40,6 +75,7 @@ def quat_rotate_inverse(q, v):
     ], dtype=np.float32)
 
 def get_gravity_orientation(quat):
+    """Project the world "down" vector into the body frame — tells the policy which way is down."""
     gravity_vec = np.array([0.0, 0.0, -1.0], dtype=np.float32)
     return quat_rotate_inverse(quat, gravity_vec)
 
@@ -85,6 +121,7 @@ WAYPOINTS = [
 ]
 
 def find_joint_info(model, names):
+    """Look up each named joint's id, qpos address, and dof (velocity) address."""
     ids = []
     qpos_adrs = []
     dof_adrs = []
@@ -98,6 +135,9 @@ def find_joint_info(model, names):
     return ids, qpos_adrs, dof_adrs
 
 def compute_observation(data, qj, dqj, action, loco_cmd, height_cmd, rpy_cmd, config):
+    """Build one 86-element WBC policy observation: 7 commands (loco_cmd,
+    height, rpy) + 3 angular velocity + 3 gravity direction + 29 joint
+    positions + 29 joint velocities + 15 previous action."""
     # 7 commands
     command = np.zeros(7, dtype=np.float32)
     command[:3] = loco_cmd[:3] * config["cmd_scale"]
@@ -127,20 +167,24 @@ def compute_observation(data, qj, dqj, action, loco_cmd, height_cmd, rpy_cmd, co
     return single_obs
 
 def main():
-    parser = argparse.ArgumentParser(description="G1 Walk & Stand WBC Simulation in MuJoCo")
-    parser.add_argument("--render-mode", type=str, default="human", choices=["human", "none"],
-                        help="Render mode ('human' for window visualization, 'none' for headless)")
-    parser.add_argument("--walk-speed", type=float, default=0.8,
-                        help="Walking forward speed command (m/s) (default: 0.8)")
-    parser.add_argument("--realtime-scale", type=float, default=1.0,
-                        help="Realtime scaling factor for visual rendering (e.g. 1.0 for real-time) (default: 1.0)")
-    args = parser.parse_args()
-
+    """Load the scene and WBC policies, then run the scripted stand/walk/
+    waypoint sequence (see render-mode/walk-speed/realtime-scale flags above)."""
     script_dir = os.path.dirname(os.path.abspath(__file__))
     root_dir = os.path.dirname(script_dir)
     scene_path = os.path.join(root_dir, "scenes", "mujoco", "g1_walk_scene.xml")
     stand_onnx_path = os.path.join(root_dir, "model_policy", "stand.onnx")
     walk_onnx_path = os.path.join(root_dir, "model_policy", "walk.onnx")
+    robot_params_path = os.path.join(root_dir, "config", "robot_params.yaml")
+    robot_params = load_robot_params(robot_params_path)
+
+    parser = argparse.ArgumentParser(description="G1 Walk & Stand WBC Simulation in MuJoCo")
+    parser.add_argument("--render-mode", type=str, default="human", choices=["human", "none"],
+                        help="Render mode ('human' for window visualization, 'none' for headless)")
+    parser.add_argument("--walk-speed", type=float, default=robot_params["walk_speed"],
+                        help=f"Walking forward speed command (m/s) (default: {robot_params['walk_speed']})")
+    parser.add_argument("--realtime-scale", type=float, default=1.0,
+                        help="Realtime scaling factor for visual rendering (e.g. 1.0 for real-time) (default: 1.0)")
+    args = parser.parse_args()
 
     print("=== Principal MuJoCo Simulation: G1 Walking Controller ===")
     print(f"Loading compiled scene: {scene_path}")
@@ -189,7 +233,7 @@ def main():
 
     # Configure simulation time
     model.opt.timestep = 0.002
-    control_decimation = 10  # 10 * 2ms = 20ms (50Hz) control update rate
+    control_decimation = robot_params["control_decimation"]  # 10 * 2ms = 20ms (50Hz) control update rate
     print(f"Simulation timestep set to {model.opt.timestep}s")
     print(f"Control frequency set to {1.0 / (model.opt.timestep * control_decimation)}Hz")
 
@@ -230,31 +274,31 @@ def main():
     hand_joint_ids, hand_qpos_adrs, hand_dof_adrs = find_joint_info(model, hand_joint_names)
     body_joint_ids, body_qpos_adrs, body_dof_adrs = find_joint_info(model, body_joint_names)
 
+    # Leg/waist PD gains, expanded from the per-joint-group values in robot_params.yaml
+    leg_kps, leg_kds, leg_kis = expand_group_gains(leg_joint_names, robot_params["leg_joints"])
+
     # Policy Configuration
     config = {
         "cmd_scale": np.array([2.0, 2.0, 0.5], dtype=np.float32),
         "ang_vel_scale": 0.5,
         "dof_pos_scale": 1.0,
         "dof_vel_scale": 0.05,
-        "action_scale": 0.25,
+        "action_scale": robot_params["action_scale"],
         "default_angles": np.array([-0.1, 0.0, 0.0, 0.3, -0.2, 0.0,
                                     -0.1, 0.0, 0.0, 0.3, -0.2, 0.0,
                                      0.0, 0.0, 0.0], dtype=np.float32),
-        "kps": np.array([150, 150, 150, 200, 40, 40,
-                         150, 150, 150, 200, 40, 40,
-                         250.0, 250.0, 250.0], dtype=np.float32),
-        "kds": np.array([2.0, 2.0, 2.0, 4.0, 2.0, 2.0,
-                         2.0, 2.0, 2.0, 4.0, 2.0, 2.0,
-                         5.0, 5.0, 5.0], dtype=np.float32),
-        "height_cmd": 0.74,
+        "kps": leg_kps,
+        "kds": leg_kds,
+        "kis": leg_kis,
+        "height_cmd": robot_params["standing_height"],
         "rpy_cmd": np.array([0.0, 0.0, 0.0], dtype=np.float32),
     }
 
     # Arm and hand PD parameters (zero target targets)
-    arm_kps = np.full(14, 100.0, dtype=np.float32)
-    arm_kds = np.full(14, 2.0, dtype=np.float32)
-    hand_kps = np.full(32, 50.0, dtype=np.float32)
-    hand_kds = np.full(32, 1.0, dtype=np.float32)
+    arm_kps = np.full(14, robot_params["arm_joints"]["kp"], dtype=np.float32)
+    arm_kds = np.full(14, robot_params["arm_joints"]["kd"], dtype=np.float32)
+    hand_kps = np.full(32, robot_params["hand_joints"]["kp"], dtype=np.float32)
+    hand_kds = np.full(32, robot_params["hand_joints"]["kd"], dtype=np.float32)
 
     # Initialize ONNX inference sessions
     print("Initializing ONNX Inference Sessions...")
@@ -264,7 +308,7 @@ def main():
     # Set initial posture and coordinates in MjData
     data.qpos[0] = 0.0   # Pelvis X
     data.qpos[1] = 0.0   # Pelvis Y
-    data.qpos[2] = 0.74  # Pelvis Z (standing height)
+    data.qpos[2] = config["height_cmd"]  # Pelvis Z (standing height)
     data.qpos[3:7] = [1.0, 0.0, 0.0, 0.0]  # identity orientation quaternion
 
     # Set legs to default angles
@@ -303,6 +347,9 @@ def main():
     print("-" * 105)
 
     def sim_step():
+        """One 2ms physics step: steer toward the current waypoint, run WBC
+        policy inference every control_decimation steps, apply PD torques,
+        advance physics, and log."""
         nonlocal step_counter, target_dof_pos, action, loco_cmd, waypoint_idx
 
         # 1. Steer toward the current waypoint based on pelvis position and yaw

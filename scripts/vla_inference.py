@@ -1,12 +1,19 @@
 """
-================================================================================
-  vla_inference.py - GR00T-G1 VLA Inference Loop
-  
-  PURPOSE:
-    Loads the Nvidia GR00T-N1.7 pipeline, fetches camera frames and joint states 
-    from the MuJoCo simulation environment, and steps the joints based on VLA 
-    predictions.
-================================================================================
+vla_inference.py - GR00T-G1 VLA Inference Loop
+
+Runs a 5-step control loop against G1VLAEnv (src/g1_control/vla_env.py):
+fetch a head-camera frame + left-arm joint state, run VLA inference, step
+the environment with the predicted left-arm action. No viewer — uses
+G1VLAEnv's offscreen renderer, so a plain `python` works (no mjpython needed).
+
+USE_ACTUAL_MODEL (below) is hardcoded False: real GR00T-N1.7 inference is
+wired up but not runnable without the `huggingface_hub`/`gr00t` packages and
+model access, so this currently runs in mock mode (random small action deltas).
+
+Usage Examples:
+----------------
+1. Run the 5-step mock inference loop:
+       python scripts/vla_inference.py
 """
 
 import os
@@ -78,6 +85,7 @@ def run_vla_inference(env_observation, instruction):
         return np.random.uniform(-0.01, 0.01, size=7)
 
 def main():
+    """Run a 5-step VLA control loop: reset the env, then repeatedly infer and apply an action."""
     env = G1VLAEnv()
     obs = env.reset()
     

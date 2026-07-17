@@ -1,11 +1,19 @@
 """
-================================================================================
-  vla_env.py - VLA Environment Wrapper for G1 Humanoid in MuJoCo
-  
-  PURPOSE:
-    Provides camera rendering (RGB visual observations) and actions execution
-    suitable for VLA (Vision-Language-Action) models like GR00T-G1.
-================================================================================
+vla_env.py - VLA Environment Wrapper for G1 Humanoid in MuJoCo
+
+Minimal Gym-like environment (reset/step/get_observation) around
+scenes/mujoco/apple_table_scene.xml, providing head-camera RGB frames and
+left-arm joint state as observations, and taking left-arm delta-position
+actions. Used by scripts/vla_inference.py; not a standalone script — import
+G1VLAEnv into your own control/inference loop.
+
+Usage Example:
+----------------
+    from g1_control.vla_env import G1VLAEnv
+
+    env = G1VLAEnv()
+    obs = env.reset()                        # {"image": ..., "qpos": ...}
+    obs = env.step(action_delta)              # action_delta: 7 left-arm joint deltas
 """
 
 import os
@@ -13,7 +21,10 @@ import numpy as np
 import mujoco
 
 class G1VLAEnv:
+    """VLA-facing wrapper around the apple/table MuJoCo scene: camera + left-arm state in, left-arm deltas out."""
+
     def __init__(self):
+        """Load the scene, set up the head-camera offscreen renderer, and resolve left-arm joint addresses."""
         # Resolve scene XML path relative to the repo root (src/g1_control -> repo root)
         self.script_dir = os.path.dirname(os.path.abspath(__file__))
         self.root_dir = os.path.dirname(os.path.dirname(self.script_dir))
@@ -39,6 +50,7 @@ class G1VLAEnv:
         self.larm_qpos = [self.model.jnt_qposadr[mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_JOINT, name)] for name in self.left_arm_joint_names]
         
     def reset(self):
+        """Reset physics state, place the robot standing at the pelvis, and return the initial observation."""
         mujoco.mj_resetData(self.model, self.data)
         
         # Set floating pelvis standing base

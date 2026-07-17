@@ -8,10 +8,85 @@
 
   <mujoco>
     <compiler meshdir="" discardvisual="false" balanceinertia="true"/>
+    <option timestep="0.002" gravity="0 0 -9.81"/>
+    <visual>
+      <quality shadowsize="4096" reflectionsize="1024"/>
+      <map shadowclip="0.5" shadowscale="1.5"/>
+    </visual>
+    <asset>
+      <!-- Gradient skybox for reflection and ambient lighting -->
+      <texture type="skybox" builtin="gradient" rgb1="0.6 0.7 0.8" rgb2="0.1 0.1 0.15" width="512" height="3072"/>
+      
+      <!-- Checkerboard grid for floor -->
+      <texture name="floor_grid" type="2d" builtin="checker" rgb1="0.15 0.15 0.15" rgb2="0.25 0.25 0.25" width="512" height="512" mark="edge" markrgb="0.35 0.35 0.35"/>
+      <material name="floor_mat" texture="floor_grid" texrepeat="20 20" reflectance="0.2" roughness="0.5"/>
+      
+      <!-- Wood material for furniture -->
+      <material name="wood_mat" rgba="0.45 0.3 0.18 1.0" shininess="0.3" specular="0.3" roughness="0.45" metallic="0.1"/>
+      
+      <!-- Sofa fabric material -->
+      <material name="sofa_mat" rgba="0.2 0.25 0.35 1.0" shininess="0.1" specular="0.1" roughness="0.8"/>
+      
+      <!-- Off-white wall material -->
+      <material name="wall_mat" rgba="0.92 0.90 0.86 1.0" shininess="0.0" specular="0.0" roughness="0.9"/>
+      
+      <!-- Glossy TV Screen -->
+      <material name="tv_mat" rgba="0.05 0.05 0.05 1.0" shininess="0.95" specular="0.95" roughness="0.05" metallic="0.9" reflectance="0.8"/>
+      
+      <!-- Robot Dark parts (Metallic carbon-like) -->
+      <material name="dark" rgba="0.18 0.18 0.18 1.0" shininess="0.6" specular="0.7" roughness="0.25" metallic="0.8"/>
+      
+      <!-- Robot White parts (Glossy plastic/ceramic) -->
+      <material name="white" rgba="0.85 0.85 0.85 1.0" shininess="0.7" specular="0.6" roughness="0.2" metallic="0.3"/>
+    </asset>
+    <worldbody>
+      <!-- Ground floor plane using checkerboard material -->
+      <geom name="floor" type="plane" size="20 20 0.1" material="floor_mat" condim="3" friction="1 0.005 0.0001"/>
+
+      <!-- Ambient Overhead Light -->
+      <light pos="0 0 6" dir="0 0 -1" diffuse="0.5 0.5 0.5" specular="0.2 0.2 0.2" directional="false" castshadow="true"/>
+      <!-- Soft living room ceiling light casting soft shadows -->
+      <light pos="2.5 0 3.5" dir="0 0 -1" diffuse="0.8 0.75 0.7" specular="0.3 0.3 0.3" directional="false" castshadow="true"/>
+      <!-- Front-left fill light -->
+      <light pos="4.0 -3.0 4.0" dir="-0.5 0.5 -0.7" diffuse="0.4 0.4 0.4" specular="0.1 0.1 0.1" directional="false" castshadow="true"/>
+      <!-- Rear rim light -->
+      <light pos="-3.0 3.0 4.0" dir="0.5 -0.5 -0.7" diffuse="0.3 0.3 0.3" specular="0.1 0.1 0.1" directional="false" castshadow="false"/>
+
+      <!-- Living Room Scenery Geoms with high-fidelity materials -->
+      <!-- Wall North (Front) -->
+      <geom name="wall_north" type="box" pos="6.0 0.0 1.5" size="0.1 6.0 1.5" material="wall_mat" condim="3"/>
+      <!-- Wall South (Back) -->
+      <geom name="wall_south" type="box" pos="-6.0 0.0 1.5" size="0.1 6.0 1.5" material="wall_mat" condim="3"/>
+      <!-- Wall West (Left) -->
+      <geom name="wall_west" type="box" pos="0.0 6.0 1.5" size="6.0 0.1 1.5" material="wall_mat" condim="3"/>
+      <!-- Wall East (Right) -->
+      <geom name="wall_east" type="box" pos="0.0 -6.0 1.5" size="6.0 0.1 1.5" material="wall_mat" condim="3"/>
+
+      <!-- Sofa -->
+      <geom name="sofa_seat" type="box" pos="4.5 0.0 0.25" size="0.5 1.2 0.25" material="sofa_mat" condim="3"/>
+      <geom name="sofa_backrest" type="box" pos="4.9 0.0 0.7" size="0.1 1.2 0.3" material="sofa_mat" condim="3"/>
+      <geom name="sofa_left_arm" type="box" pos="4.5 1.25 0.45" size="0.5 0.1 0.2" material="sofa_mat" condim="3"/>
+      <geom name="sofa_right_arm" type="box" pos="4.5 -1.25 0.45" size="0.5 0.1 0.2" material="sofa_mat" condim="3"/>
+
+      <!-- Coffee Table -->
+      <geom name="coffee_table_top" type="box" pos="2.8 0.0 0.25" size="0.4 0.7 0.03" material="wood_mat" condim="3"/>
+      <geom name="coffee_table_leg_fl" type="box" pos="3.1 0.6 0.11" size="0.04 0.04 0.11" material="wood_mat" condim="3"/>
+      <geom name="coffee_table_leg_fr" type="box" pos="3.1 -0.6 0.11" size="0.04 0.04 0.11" material="wood_mat" condim="3"/>
+      <geom name="coffee_table_leg_bl" type="box" pos="2.5 0.6 0.11" size="0.04 0.04 0.11" material="wood_mat" condim="3"/>
+      <geom name="coffee_table_leg_br" type="box" pos="2.5 -0.6 0.11" size="0.04 0.04 0.11" material="wood_mat" condim="3"/>
+
+      <!-- TV Unit -->
+      <geom name="tv_stand" type="box" pos="-3.5 0.0 0.2" size="0.3 1.0 0.2" material="wood_mat" condim="3"/>
+      <geom name="tv_screen" type="box" pos="-3.5 0.0 0.85" size="0.04 0.8 0.45" material="tv_mat" condim="3"/>
+
+      <!-- Bookshelf -->
+      <geom name="bookshelf" type="box" pos="0.0 5.4 1.2" size="0.2 0.9 1.2" material="wood_mat" condim="3"/>
+    </worldbody>
   </mujoco>
 
-  <!-- [CAUTION] uncomment when convert to mujoco -->
-  <link name="world"></link>
+  <link name="world">
+    <!-- empty world link to keep URDF schema parser happy -->
+  </link>
   <joint name="floating_base_joint" type="floating">
     <parent link="world"/>
     <child link="pelvis"/>

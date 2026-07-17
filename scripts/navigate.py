@@ -1,6 +1,15 @@
 """
 navigate.py - Waypoint navigation for G1 in living room scene
-Robot follows a path through the room avoiding obstacles.
+
+Robot follows a fixed list of waypoints (WAYPOINTS below) around the room's
+furniture, using the same stand.onnx/walk.onnx WBC policies and PD control
+as run_wbc_mujoco.py, but with simpler turn-then-walk steering (get_loco_cmd)
+and no config file or CLI flags — always runs with the interactive viewer.
+
+Usage Examples:
+----------------
+1. Run with the interactive viewer (macOS needs `mjpython` in place of `python`):
+       mjpython scripts/navigate.py
 """
 
 import os
@@ -11,6 +20,7 @@ import mujoco.viewer
 import onnxruntime as ort
 
 def pd_control(target_q, q, kp, target_dq, dq, kd):
+    """Standard PD control law: torque = kp*(target_q - q) + kd*(target_dq - dq)."""
     return (target_q - q) * kp + (target_dq - dq) * kd
 
 def quat_to_yaw(quat):
@@ -55,6 +65,8 @@ WAYPOINTS = [
 ]
 
 def main():
+    """Load the scene and WBC policies, then walk the robot through WAYPOINTS
+    in the interactive viewer until it's closed."""
     script_dir = os.path.dirname(os.path.abspath(__file__))
     root_dir = os.path.dirname(script_dir)
     model = mujoco.MjModel.from_xml_path(os.path.join(root_dir, "scenes", "mujoco", "g1_walk_scene.xml"))
